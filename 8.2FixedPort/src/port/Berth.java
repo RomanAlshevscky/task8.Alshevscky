@@ -1,11 +1,9 @@
 package port;
 
-import java.util.List;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.locks.Lock;
-
 import warehouse.Container;
 import warehouse.Warehouse;
+
+import java.util.List;
 
 public class Berth {
 
@@ -20,95 +18,43 @@ public class Berth {
 	public int getId() {
 		return id;
 	}
-	//Логика ограничения потокам доступа к методам работающих
-	// с коллекциями расположена вне класса с этими методами
-	//Каждому классу работающему с классом warehouse приходиться
-	// самостоятельно обеспечивать потокобезопасность
+
 	public boolean add(Warehouse shipWarehouse, int numberOfConteiners) throws InterruptedException {
 		boolean result = false;
-		Lock portWarehouseLock = portWarehouse.getLock();	
-		boolean portLock = false;
-
-		try{
-			portLock = portWarehouseLock.tryLock(30, TimeUnit.SECONDS);
-			if (portLock) {
-				int newConteinerCount = portWarehouse.getRealSize()	+ numberOfConteiners;
-				if (newConteinerCount <= portWarehouse.getFreeSize()) {
-					result = doMoveFromShip(shipWarehouse, numberOfConteiners);	
-				}
-			}
-		} finally{
-			if (portLock) {
-				portWarehouseLock.unlock();
-			}
+		int newConteinerCount = portWarehouse.getRealSize() + numberOfConteiners;
+		if (newConteinerCount <= portWarehouse.getFreeSize()) {
+			result = doMoveFromShip(shipWarehouse, numberOfConteiners);
 		}
 
 		return result;
 	}
 	
-	private boolean doMoveFromShip(Warehouse shipWarehouse, int numberOfConteiners) throws InterruptedException{
-		Lock shipWarehouseLock = shipWarehouse.getLock();
-		boolean shipLock = false;
-		
-		try{
-			shipLock = shipWarehouseLock.tryLock(30, TimeUnit.SECONDS);
-			if (shipLock) {
-				if(shipWarehouse.getRealSize() >= numberOfConteiners){
-					List<Container> containers = shipWarehouse.getContainer(numberOfConteiners);
-					portWarehouse.addContainer(containers);
-					return true;
-				}
-			}
-		}finally{
-			if (shipLock) {
-				shipWarehouseLock.unlock();
-			}
+	private boolean doMoveFromShip(Warehouse shipWarehouse, int numberOfConteiners) throws InterruptedException {
+		if (shipWarehouse.getRealSize() >= numberOfConteiners) {
+			List<Container> containers = shipWarehouse.getContainer(numberOfConteiners);
+			portWarehouse.addContainer(containers);
+			return true;
 		}
-		
-		return false;		
+
+		return false;
 	}
 
 	public boolean get(Warehouse shipWarehouse, int numberOfConteiners) throws InterruptedException {
 		boolean result = false;
-		Lock portWarehouseLock = portWarehouse.getLock();	
-		boolean portLock = false;
-
-		try{
-			portLock = portWarehouseLock.tryLock(30, TimeUnit.SECONDS);
-			if (portLock) {
-				if (numberOfConteiners <= portWarehouse.getRealSize()) {
-					result = doMoveFromPort(shipWarehouse, numberOfConteiners);	
-				}
-			}
-		} finally{
-			if (portLock) {
-				portWarehouseLock.unlock();
-			}
+		if (numberOfConteiners <= portWarehouse.getRealSize()) {
+			result = doMoveFromPort(shipWarehouse, numberOfConteiners);
 		}
-
 		return result;
 	}
 	
-	private boolean doMoveFromPort(Warehouse shipWarehouse, int numberOfConteiners) throws InterruptedException{
-		Lock shipWarehouseLock = shipWarehouse.getLock();
-		boolean shipLock = false;
-		
-		try{
-			shipLock = shipWarehouseLock.tryLock(30, TimeUnit.SECONDS);
-			if (shipLock) {
-				int newConteinerCount = shipWarehouse.getRealSize() + numberOfConteiners;
-				if(newConteinerCount <= shipWarehouse.getFreeSize()){
-					List<Container> containers = portWarehouse.getContainer(numberOfConteiners);
-					shipWarehouse.addContainer(containers);
-					return true;
-				}
-			}
-		}finally{
-			if (shipLock) {
-				shipWarehouseLock.unlock();
-			}
+	private boolean doMoveFromPort(Warehouse shipWarehouse, int numberOfConteiners) throws InterruptedException {
+		int newConteinerCount = shipWarehouse.getRealSize() + numberOfConteiners;
+		if (newConteinerCount <= shipWarehouse.getFreeSize()) {
+			List<Container> containers = portWarehouse.getContainer(numberOfConteiners);
+			shipWarehouse.addContainer(containers);
+			return true;
 		}
-		
-		return false;		
+
+		return false;
 	}
 }

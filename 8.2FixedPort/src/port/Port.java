@@ -1,6 +1,7 @@
 package port;
 
 import java.util.HashMap;
+import java.util.Hashtable;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -26,19 +27,23 @@ public class Port {
 		for (int i = 0; i < berthSize; i++) {
 			berthList.add(new Berth(i, portWarehouse));
 		}
-		usedBerths = new HashMap<Ship, Berth>();
+		usedBerths = new Hashtable<Ship, Berth>();
 		logger.debug("Порт создан.");
 	}
 	
 	public void setContainersToWarehouse(List<Container> containerList){
-		portWarehouse.addContainer(containerList);
+		try {
+			portWarehouse.addContainer(containerList);
+		} catch (InterruptedException e){
+			logger.error("Не удалось загрузить контейнеры.", e);
+		}
 	}
 
 	public boolean lockBerth(Ship ship) {
 		Berth berth;
 		try {
 			berth = berthList.take();
-			usedBerths.put(ship, berth); //Не потокобезопасное добавление в map
+			usedBerths.put(ship, berth);
 		} catch (InterruptedException e) {
 			logger.debug("Кораблю " + ship.getName() + " отказано в швартовке.");
 			return false;
@@ -52,7 +57,7 @@ public class Port {
 		
 		try {
 			berthList.put(berth);
-			usedBerths.remove(ship);//Не потокобезопасное извлечение из map
+			usedBerths.remove(ship);
 		} catch (InterruptedException e) {
 			logger.debug("Корабль " + ship.getName() + " не смог отшвартоваться.");
 			return false;

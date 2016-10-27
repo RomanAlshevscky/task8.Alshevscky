@@ -27,7 +27,11 @@ public class Ship implements Runnable {
 	}
 
 	public void setContainersToWarehouse(List<Container> containerList) {
-		shipWarehouse.addContainer(containerList);
+		try {
+			shipWarehouse.addContainer(containerList);
+		} catch (InterruptedException e){
+			logger.error("Не удалось загрузить контейнеры.", e);
+		}
 	}
 
 	public String getName() {
